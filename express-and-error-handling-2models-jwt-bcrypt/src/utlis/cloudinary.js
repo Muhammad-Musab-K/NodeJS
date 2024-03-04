@@ -13,8 +13,10 @@ const FileUploadInCloudinary = async (uploadFile) => {
             { resource_type: auto },
         )
         console.log(`The file is successfully Uploaded :${response.url} `)
+        return response
     } catch (error) {
-        fs.unlink(uploadFile)
+        fs.unlinkSync(uploadFile)
+        return null;
     }
 }
 export { FileUploadInCloudinary }

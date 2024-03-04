@@ -14,10 +14,10 @@
 
 // the upper method is correct but we have another method 
 
-const asyncHandler = async (requestHandler) => {
+const asyncHandler = (requestHandler) => {
     return (req, res, next) => {
         Promise.resolve(requestHandler(req, res, next))
-            .catch(err => next(err));
+            .catch((err) => next(err));
     };
 };
 
