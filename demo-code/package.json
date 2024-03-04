@@ -1,17 +1,17 @@
 {
-  "name": "express-and-error-handling",
+  "name": "new-folder",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "dev": "nodemon dotenv/config --experimental-json-modules src/index.js"
+    "start": "node index.js",
+    "dev": "nodemon dotenv/config --experimental-json-modules src/index.js index.js"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
     "bcrypt": "^5.1.1",
-    "cloudinary": "^2.0.2",
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
