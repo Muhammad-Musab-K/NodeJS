@@ -20,4 +20,4 @@ export { app }
 //import Routes 
 import userRouter from "./routes/user.route.js"
 
-app.use("/users", userRouter)
+app.use("/api/v1/users", userRouter)
