@@ -1,8 +1,7 @@
-import { asyncHandler } from "../utlis/asyncHandler";
-import { ApisError } from "../utlis/ApisError";
+import { asyncHandler } from "../utlis/asyncHandler.js";
+import { ApisError } from "../utlis/ApisError.js";
 import Jwt from "jsonwebtoken";
-import { ApiResponse } from "../utlis/ApiResponse";
-import { User } from "../models/user.model";
+import { User } from "../models/user.model.js";
 
 
 const verifyJwt = asyncHandler(async (req, res, next) => {
@@ -27,3 +26,4 @@ const verifyJwt = asyncHandler(async (req, res, next) => {
         throw ApisError(401, error.message || "Access token is not found")
     }
 })
+export { verifyJwt }
