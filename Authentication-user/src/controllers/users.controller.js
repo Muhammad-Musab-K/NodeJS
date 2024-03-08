@@ -124,8 +124,7 @@ const loginUser = asyncHandler(async (req, res) => {
     const loggedInUser = await User.findById(user._id).select(
         "-password -refreshToken"
     )
-    console.log("logged in", loggedInUser)
-    console.log(user._id)
+   
     const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(user._id)
 
     const options = {
@@ -214,4 +213,5 @@ const reGenerateAccessAndRefreshTokens = asyncHandler(async (req, res) => {
 })
 
 export { registerUser, loginUser, logOutUser }
+//difference between findOne() and find() = in find we get array of user otherwise in findOne we get just object of user
 

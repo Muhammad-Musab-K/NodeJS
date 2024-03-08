@@ -78,6 +78,6 @@ userSchema.methods.generateRefreshToken =  function () {
         }
     )
 }
-
+//arrow function access parent's this
 
 export const User = mongoose.model("User", userSchema)

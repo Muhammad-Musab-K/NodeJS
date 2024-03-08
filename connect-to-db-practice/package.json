@@ -1,0 +1,19 @@
+{
+  "name": "connect-to-db-practice",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "nodemon -r dotenv/config --experimental-json-modules src/index.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "cloudinary": "^2.0.3",
+    "cookie-parser": "^1.4.6",
+    "cors": "^2.8.5",
+    "multer": "^1.4.5-lts.1",
+    "prettier": "^3.2.5"
+  }
+}
