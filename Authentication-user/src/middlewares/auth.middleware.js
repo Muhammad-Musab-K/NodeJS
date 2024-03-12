@@ -1,29 +1,34 @@
-import { asyncHandler } from "../utlis/asyncHandler.js";
-import { ApisError } from "../utlis/ApisError.js";
-import Jwt from "jsonwebtoken";
+
+
 import { User } from "../models/user.model.js";
+import Jwt from "jsonwebtoken";
+import { ApisError } from "../utlis/ApisError.js";
+import { asyncHandler } from "../utlis/asyncHandler.js";
 
-
-const verifyJwt = asyncHandler(async (req, res, next) => {
+const verifyJwt = asyncHandler(async (req, _, next) => {
     try {
-        const token = await req.cookies?.accessToken || req.header("Authorization")?.replace("bearer ", "");
+        const token = await req.cookies?.accessToken || req.header("Authorization")?.replace("bearer ", "")
+        if (!token) {
+            throw new ApisError(401, "Invalid token")
+        }
+        console.log(token , "token")
 
-        if (!token) throw new ApisError(400, "invalid token")
+        const decode = Jwt.verify(token, process.env.ACCESS_TOKEN_SECRET)
+        if (!decode) {
+            throw new ApisError(404, "invalid decode token")
+        }
 
-        const decodeToken = Jwt.verify(token, process.env.ACCESS_TOKEN_SECRET)
-
-        const user = User.findById(decodeToken?._id).select("-password -refreshToken")
+        const user = await User.findById(decode._id).select("-password -refreshToken")
 
         if (!user) {
-            throw new ApisError(401, "Invalid access Token")
+            throw new ApisError(404, "user not found")
         }
 
         req.user = user
         next()
-
-
     } catch (error) {
-        throw ApisError(401, error.message || "Access token is not found")
-    }
+        throw new ApisError(401, error.message || "Access token is not found")    }
+
 })
-export { verifyJwt }
+
+export {verifyJwt}

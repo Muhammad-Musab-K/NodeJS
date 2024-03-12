@@ -1,74 +1,63 @@
-import { asyncHandler } from "../utlis/asyncHandler.js";
-import { ApiResponse } from "../utlis/ApiResponse.js";
-import { ApisError } from "../utlis/ApisError.js"
 import { User } from "../models/user.model.js"
-import { FileUploadInCloudinary } from "../utlis/cloudinary.js";
-import Jwt from "jsonwebtoken";
-
-const generateAccessAndRefreshTokens = async (userId) => {
-    try {
-        const user = await User.findById(userId);
-        console.log("user ", user)
-        if (!user) {
-            throw new ApisError(404, "User not found")
-        }
-        const accessToken = await user.generateAccessToken()
-        const refreshToken = await user.generateRefreshToken()
+import { ApiResponse } from "../utlis/ApiResponse.js"
+import { ApisError } from "../utlis/ApisError.js"
+import { asyncHandler } from "../utlis/asyncHandler.js"
+import { FileUploadInCloudinary } from "../utlis/cloudinary.js"
+import Jwt from "jsonwebtoken"
 
 
-        user.refreshToken = refreshToken
-        await user.save({ validateBeforeSave: false })
-
-        return { accessToken, refreshToken }
-
-    } catch (error) {
-        throw new ApisError(404, "Something went wrong while generating referesh and access token")
+const generateRefreshAndAccessToken = async (userId) => {
+    const user = await User.findById(userId)
+    if (!user) {
+        throw new ApisError(400, "user not found")
     }
+    const accessToken = await user.generateAccessToken();
+    const refreshToken = await user.generateRefreshToken()
+    if (!accessToken && !refreshToken) {
+        throw new ApisError(401, "token is not generated")
+    }
+    user.refreshToken = refreshToken
+    await user.save({ validateBeforeSave: false })
+
+    return { accessToken, refreshToken }
+
 }
 
+
 const registerUser = asyncHandler(async (req, res) => {
-    // get user data of all fields
-    // validate user Data
-    // username and email check if they already exist
-    // check images and check avatar
-    // avatar and image upload on cloudinary
-    // create an object of user
-    // check create user
-    // res check
-    const { username, email, fullname, password } = req.body
-    console.log("body", req.body)
-
-    if ([username, email, fullname, password].some(field => field === "")) {
-        throw new ApisError(400, " Must Fulfilled All The Fields")
+    //get data
+    //check having all data
+    //check username or email if it is already exists
+    //check images of avatar
+    //upload image to cloudinary
+    //create user
+    //res.send
+    const { email, fullname, username, password, } = req.body
+    if ([email, fullname, username, password].some(field => field === "")) {
+        throw new ApisError(400, "Fill all fileds")
     }
-    const existedUser = await User.findOne({
-        $or: [{ username }, { email }]
-    });
-
-    if (existedUser) {
-        throw new ApisError(409, "Username or email already exists");
-    }
-    console.log("files", req.files)
-    const localAvatarPath = req.files?.avatar[0]?.path;
-    console.log(localAvatarPath)
-    let coverImageLocalPath;
-    if (req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.length > 0) {
-        coverImageLocalPath = req.files.coverImage[0].path;
+    const existingUser = await User.findOne({
+        $or: [{ email }, { username }]
+    })
+    if (existingUser) {
+        throw new ApisError(400, "User already exists")
     }
 
-
-    if (!localAvatarPath) {
-        throw new ApisError(400, "The avatar is not find")
+    const localPathAvatar = req.files?.avatar[0]?.path;
+    let localPathCoverImage;
+    if (req.files && Array.isArray(req.files.localPathCoverImage) && req.files.coverImage[0].path) {
+        localPathCoverImage = req.files.coverImage[0].path
+    }
+    if (!localPathAvatar) {
+        throw new ApisError(400, "avatar missing")
     }
 
-    const avatar = await FileUploadInCloudinary(localAvatarPath)
-    const coverImage = await FileUploadInCloudinary(coverImageLocalPath)
-
+    const avatar = await FileUploadInCloudinary(localPathAvatar)
+    const coverImage = await FileUploadInCloudinary(localPathCoverImage)
 
     if (!avatar) {
-        throw new ApisError(400, "The avatar is not uploaded")
+        throw new ApisError(400, "avatar missing")
     }
-
     const user = await User.create({
         username: username.toLowerCase(),
         fullname,
@@ -78,82 +67,71 @@ const registerUser = asyncHandler(async (req, res) => {
         coverImage: coverImage?.url || ""
     })
 
+    const createUser = await User.findById(user._id).select("-password -refreshToken")
 
-    const createdUser = await User.findById(user._id).select(
-        "-password -refreshToken"
-    )
-
-    if (!createdUser) {
-        throw new ApisError(500, "The is not register")
+    if (!createUser) {
+        throw new ApisError(404, "User is not registered .Please try again")
     }
 
-
-    return res.status(201).json(
-        new ApiResponse(200, createdUser, "user register successfully")
-    )
+    res.status(200).json(new ApiResponse(200, "User created successfully"))
 
 })
 
-const loginUser = asyncHandler(async (req, res) => {
-    //get data from req.body-done
-    // username or email-done
-    // find user-done
-    // check password-done
-    // access and refresh token
-    // send cookie-done
 
-    const { email, username, password } = req.body;
-
-    if (!username && !email) {
-        throw new ApisError(400, "please enter username or email")
+const login = asyncHandler(async (req, res) => {
+    //check usrname or email is available
+    //check password is correct or not 
+    //generate refresh token and access token
+    //check access and refresh token
+    //res.send
+    const { email, password, username } = req.body
+    if (!email && !username) {
+        throw new ApisError(400, "enter yout name or email")
     }
+
     const user = await User.findOne({
-        $or: [{ username }, { email }]
+        $or: [{ email }, { username }]
     })
 
     if (!user) {
-        throw ApisError(404, "user is not found")
+        throw new ApisError(401, "user not found")
     }
 
-    const checkpassword = user.isPasswordCorrect(password)
+    const checkPassword = user.isPasswordCorrect(password)
 
-    if (!checkpassword) {
-        throw new ApisError(400, "please enter password")
+    if (!checkPassword) {
+        throw new ApisError(401, " password not correct")
     }
+    const loggedInUser = await User.findById(user._id).select("-password -refreshToken")
 
-    const loggedInUser = await User.findById(user._id).select(
-        "-password -refreshToken"
-    )
-   
-    const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(user._id)
+    const { accessToken, refreshToken } = await generateRefreshAndAccessToken(user._id)
 
     const options = {
-        HttpOnly: true,
+        httpOnly: true,
         secure: true
     }
 
-    return res
+    res
         .status(200)
         .cookie("accessToken", accessToken, options)
         .cookie("refreshToken", refreshToken, options)
-        .json(new ApiResponse(
-            200,
+        .json(new ApiResponse(200,
+            "login succesfuly",
             {
                 user: loggedInUser, accessToken, refreshToken
-            },
-            "Logged In Successfully"
+            }
         ))
 })
 
-const logOutUser = asyncHandler(async (req, res) => {
-    //want user (add middleware to get user)
-    //delete user;s refresh and accesstoken 
-    // delete cookies of user
+const logout = asyncHandler(async (req, res) => {
+    //get user by middleware
+    //remove refresh token
+    //res.send
     const user = User.findByIdAndUpdate(
         req.user._id,
         {
             $set: {
-                refreshToken: undefined
+                refreshToken: undefined,
             }
         },
         {
@@ -162,56 +140,59 @@ const logOutUser = asyncHandler(async (req, res) => {
     )
 
     const options = {
-        HttpOnly: true,
+        httpOnly: true,
         secure: true
     }
 
-    return res
+    res
         .status(200)
         .clearCookie("accessToken", options)
         .clearCookie("refreshToken", options)
-        .json(new ApiResponse(200, {}, "users logged out successfully"))
+        .json(new ApiResponse(200, "logout successfully"))
 
 })
 
-const reGenerateAccessAndRefreshTokens = asyncHandler(async (req, res) => {
-    const incomingToken = req.cookies.refreshToken || res.body
 
-    if (!incomingToken) {
-        throw new ApisError(401, "Invalid refresh token")
+const refreshAccesToken = asyncHandler(async (res, req) => {
+    //if the access token will expire then ye can refresh our access Token by this matter 
+    //because we want we dont login again and again so we create this method in which we refresh access token
+    //get current token of user from cookies
+    //decode the token
+    //match decode token with real refreshToken save in env
+    //generate new token 
+    //res.status(200)
+    const incomingRefreshToken = req.cookies?.refreshToken || req.body?.refreshToken
+
+    if (!incomingRefreshToken) {
+        throw new ApisError(401, "unauthorized refresh Token")
     }
 
-    const decode = Jwt.verify(incomingToken, process.env.REFRESH_TOKEN_SECRET);
-
-    if (!decode) {
-        throw new ApisError(401, "unmatched refresh token")
+    const decodeToken = Jwt.verify(incomingRefreshToken, process.env.REFRESH_TOKEN_SECRET)
+    if (!decodeToken) {
+        throw new ApisError(401, "invalid token")
     }
 
-    const user = await User.findById(decode?._id)
+    const user = await User.findById(decodeToken?._id)
 
     if (!user) {
-        throw new ApisError(401, "Invalid refresh token")
+        throw new ApisError(401, "invalid user ")
     }
 
-    if (incomingToken !== user.refreshToken) {
-        throw new ApisError(401, "refresh token is expired or used")
-
+    if (user.refreshToken !== incomingRefreshToken) {
+        throw new ApisError(401, "invalid refreshToken")
     }
-
-    const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(user._id)
-
     const options = {
-        HttpOnly: true,
-        secure: true
+        httpOnly: true,
+        secure: true,
     }
+
+    const { accessToken, newRefreshToken } = await generateRefreshAndAccessToken(user._id)
 
     return res
         .status(200)
-        .cookie("accessToken", accessToken)
-        .cookie("refreshToken", refreshToken)
-
+        .cookie("accessToken", accessToken, options)
+        .cookie("refreshToken", newRefreshToken, options)
+        .json(new ApiResponse(200, "refreshToken successfully!", { accessToken, refreshToken: newRefreshToken }))
 })
 
-export { registerUser, loginUser, logOutUser }
-//difference between findOne() and find() = in find we get array of user otherwise in findOne we get just object of user
-
+export { registerUser, login, logout  ,refreshAccesToken }
