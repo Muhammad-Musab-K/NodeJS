@@ -8,10 +8,12 @@ import { asyncHandler } from "../utlis/asyncHandler.js";
 const verifyJwt = asyncHandler(async (req, _, next) => {
     try {
         const token = await req.cookies?.accessToken || req.header("Authorization")?.replace("bearer ", "")
+        console.log(req.cookies)
+        console.log(token , "token")
+
         if (!token) {
             throw new ApisError(401, "Invalid token")
         }
-        console.log(token , "token")
 
         const decode = Jwt.verify(token, process.env.ACCESS_TOKEN_SECRET)
         if (!decode) {

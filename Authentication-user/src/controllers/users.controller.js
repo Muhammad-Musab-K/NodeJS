@@ -179,7 +179,7 @@ const refreshAccesToken = asyncHandler(async (res, req) => {
     }
 
     if (user.refreshToken !== incomingRefreshToken) {
-        throw new ApisError(401, "invalid refreshToken")
+        throw new ApisError(404, "refresh token is expired or used")
     }
     const options = {
         httpOnly: true,
@@ -195,4 +195,129 @@ const refreshAccesToken = asyncHandler(async (res, req) => {
         .json(new ApiResponse(200, "refreshToken successfully!", { accessToken, refreshToken: newRefreshToken }))
 })
 
-export { registerUser, login, logout  ,refreshAccesToken }
+const currentUser = asyncHandler(async (req, res) => {
+    return res
+        .status(200)
+        .json(200, "current User", { user: req.user })
+})
+
+const changepassword = asyncHandler(async (req, res) => {
+    const { oldPassword, newPassword } = req.body
+
+    if (!(oldPassword || newPassword)) {
+        throw new ApisError(401, "enter both fields")
+    }
+    const user = await User.findById(req.user_id)
+    if (!user) {
+        throw new ApisError(401, "user not found")
+    }
+    const isPasswordCorrect = await user.isPasswordCorrect(oldPassword)
+
+    if (!isPasswordCorrect) {
+        throw new ApisError(401, "password incorrect")
+    }
+
+    user.password = newPassword
+    await user.save({ validateBeforeSave: false })
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200, "password changed",))
+
+})
+
+const updateProfile = asyncHandler(async (req, res) => {
+    const { fullname, username } = req.body
+
+    if (!fullname || !username) {
+        throw new ApisError(400, "inter filed")
+    }
+
+    const user = await User.findByIdAndUpdate(
+        req.user._id,
+        {
+            $set: {
+                fullname,
+                username
+            }
+        },
+        {
+            new: true
+        }
+    ).select("-password")
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200, "profile updated",user))
+})
+
+const updateAvatar = asyncHandler(async (req, res) => {
+    const file = req.file?.path
+
+    if (!file) {
+        throw new ApisError(404, "the avatar filee is missing")
+    }
+    const avatar = await FileUploadInCloudinary(file)
+
+    if (!avatar.url) {
+        throw new ApisError(404, "the avatar not uploaded")
+    }
+
+    const user = await User.findByIdAndUpdate(
+        req.user._id,
+        {
+            $set: {
+                avatar: avatar?.url
+            }
+        },
+        {
+            new: true
+        }
+    ).select("-password")
+
+    return res
+        .status(200)
+        .json(200, "avatar changes successfully",user)
+})
+
+
+const updateCoverImage = asyncHandler(async (req, res) => {
+    const file = req.file?.path
+
+    if (!file) {
+        throw new ApisError(404, "the avatar filee is missing")
+    }
+    const coverImage = await FileUploadInCloudinary(file)
+
+    if (!coverImage.url) {
+        throw new ApisError(404, "the avatar not uploaded")
+    }
+
+    const user = await User.findByIdAndUpdate(
+        req.user._id,
+        {
+            $set: {
+                avatar: coverImage.url
+            }
+        },
+        {
+            new: true
+        }
+    ).select("-password")
+
+    return res
+        .status(200)
+        .json(200, "coverImage changes successfully",user)
+})
+
+export {
+    registerUser,
+    login,
+    logout,
+    refreshAccesToken,
+    changepassword,
+    currentUser,
+    updateProfile,
+    updateAvatar,
+    updateCoverImage
+}
