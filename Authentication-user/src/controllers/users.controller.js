@@ -248,7 +248,7 @@ const updateProfile = asyncHandler(async (req, res) => {
 
     return res
         .status(200)
-        .json(new ApiResponse(200, "profile updated",user))
+        .json(new ApiResponse(200, "profile updated", user))
 })
 
 const updateAvatar = asyncHandler(async (req, res) => {
@@ -277,7 +277,7 @@ const updateAvatar = asyncHandler(async (req, res) => {
 
     return res
         .status(200)
-        .json(200, "avatar changes successfully",user)
+        .json(200, "avatar changes successfully", user)
 })
 
 
@@ -307,7 +307,74 @@ const updateCoverImage = asyncHandler(async (req, res) => {
 
     return res
         .status(200)
-        .json(200, "coverImage changes successfully",user)
+        .json(200, "coverImage changes successfully", user)
+})
+
+const getUserChannelProfile = asyncHandler(async (req, res) => {
+    const username = req.params
+
+    if (!username?.trim()) {
+        throw new ApisError(404, "User is not exits")
+    }
+
+    const channel = await User.aggregate([
+        {
+            $match: {
+                username: username.toLowerCase(),
+            }
+        },
+        {
+            $lookup: {
+                from: "subscriptions",
+                localField: _id,
+                foreignField: channel,
+                as: "subscribers"
+            }
+        },
+        {
+            $lookup: {
+                from: "subscriptions",
+                localField: _id,
+                foreignField: subscriber,
+                as: "subscribersTo"
+            }
+        },
+        {
+            $addFields: {
+                channelSubscriberCount: {
+                    $size: "$subscribers"
+                },
+                subscribedChannelCount: {
+                    $size: "$subscribersTo"
+                },
+                isSubscribed: {
+                    $cond: {
+                        if: { $in: [req.user?._id, "$subscribers.subscriber"] },
+                        then: true,
+                        else: false
+                    }
+                }
+            }
+        }, {
+            $project: {
+                username: 1,
+                email: 1,
+                fullname: 1,
+                avatar: 1,
+                coverImage: 1,
+                channelSubscriberCount: 1,
+                subscribedChannelCount: 1
+            }
+        }
+    ])
+
+    if (!channel?.length) {
+        throw new ApisError(400, "invalid user channel")
+    }
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200, "user channel Information"), channel[0])
 })
 
 export {
